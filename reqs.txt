@@ -1,0 +1,40 @@
+v 1.0 Requirements:
+-Implement a function that has the exact same interface and semantics as the
+	malloc standard	function which allocates heap memory for the user.
+-Implement a function that has the exact same interface and semantics as the 
+	free standard function which frees blocks that are allocated using our
+	allocator.
+
+We'll be taking care to get the following requirements very strictly:
+0-  We are targetting machines running in x86-64 and We'll use that as a rough
+	 hint to how much memory we expect the system to have. (debatable)
+1-  Our allocator package(malloc & free) can handle an arbitrary request 
+	sequences; no assumptions about malloc being called in any order
+	to free or vice versa.
+2-  The allocator package must return immediate response to the call: 
+	no buffering, deferring, or blocking is allowed.
+3-  The allocator is only allowed to allocate user blocks on the heap;
+	furthermore, any internal data-structure the allocator package uses 
+	should be strictly on the heap.
+4-  Aligning blocks: For performance reasons, alignment must be taken care of,
+	blocks returned should be aligned on an 8-byte boundary 
+	(words in the x86-64 are 8-byte wide which explains this aligment
+	policy) 
+5-  Allocated blocks should never be modified by the allocator, no reason 
+	whatsoever justifies this.
+6-  Allocated blocks should never intersect with each other.
+
+version 2.0 should add to the above at least the following:
+
+- Change the malloc implementation to allow performing a mark-and-sweep garbage
+	collection algorithm (GC).
+- The garbage collector should never be called implicitly when malloc fails; 
+	the caller is lone responsible for invoking the garbage collector.
+
+The reason behind this is that allowing malloc to call the GC will cause a
+	delay that the user cannot predict, something which we are 
+	intentionally trying to avoid.
+	If the user gets a NULL pointer, they can invoke the GC if they know 
+	their program can tolerate the delay but we will not be making that 
+	decision on their behalf.
+

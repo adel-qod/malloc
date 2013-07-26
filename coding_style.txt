@@ -1,0 +1,83 @@
+For the .h Files:
+Each .h file MUST have an include guard and the define in it has the format:
+	PROJECTNAME_NAME_OF_THE_C_FILE_IN_REPRESENTS_H
+Functions in the header file must come in the same order as they are found 
+in the .c file the header represent
+----------------------------------------------------------------------------
+For the .c Files:
+
+The file starts with includes(system -> standard library -> ext lib -> other)
+followed by macros.
+Note:
+	In case a macro needs to store something in a variable, this variable
+		gets defined right before it and its name would be all CAPITAL
+		and it must be defined as static
+
+Followed by the following, in this order:
+-struct definetions
+-public variables
+-static functions prototypes
+-static variables
+
+Followed by functions:
+	-each function starts and end with a comment and this is called
+	comment-marking
+	-if a function returns error code, they must be defined before it
+	and inside the comment-marking the function
+	-If a function uses a static function, the static function
+	must follow it but it must be in its own comment-marking.
+
+On comments:
+Only the /**/ style is used for leaving comments 
+Comments of the style \\ are meant as a temporary code stoppers
+Comments of the style #if 0 are meant for blocks of code that are meant to be
+	eventually deleted
+Comments that are meant as warning must be ALL UPPER CASE
+Comments (/**/) must always leave at least one space after the /* token
+	and at least one space before the */ token
+
+On names:
+Function names must be order-verbs
+All names, variables and functions, use the camelCase convention unless stated 
+	otherwise.
+Hungarian notation is strictly prohibited
+Macros, other defines and constants are named with UPPER_CASE and each word is 
+	separated by an underscore
+Functions/macros meant for debugging only are always named with debug_<name>
+ 
+On indentation:
+Use tabs, never spaces
+If you've exceeded 4 levels of indentation, something is wrong in your code
+
+On curely braces:
+They NEVER appear in the same line as a statement or expression
+They're ALWAYS after it
+Good:
+	if()
+	{}
+bad:
+	if(){
+	}
+
+On debugging:
+Printing debug messages should only be done with the debug_print macro
+Also, when printing a debug message, the message MUST contain which function
+	it was printed from and any other relevant info to make the message
+	useful enough
+
+Misc:
+Pointer definitions must be of the form:
+type *name;
+and not
+type* name; 
+
+I, the reader of this document, herby takes a solumn oath that I will never 
+	write a line of code that exceeds the 80-chars-perline standard and 
+	Gandalf the greyCoder be my witness to this.
+
+Everything should be private/static unless needed to be otherwise
+
+For this project, there's no need to divide the code into different files,
+	most of the components are closely related so a single file will do.
+
+Finally, please be consistent.

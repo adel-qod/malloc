@@ -1,0 +1,17 @@
+The aim of this project is to first write an implementation for the malloc
+C standard library function, then on top of it, implement a conservative 
+garbage collector.
+
+For technical details: Check the doc.txt file
+For the requirements list: Check the reqs.txt file
+For the flow charts: Check the malloc_flow_chart.pdf and free_flow_chart.pdf
+For the coding style used in this project: coding_style.txt
+
+You are strongly encourged to first read the requirements, then check the doc
+file and follow the instructions there
+
+This project is under the MIT license
+
+Contact info:
+Adel Qodmani
+adel.qod@gmail.com
