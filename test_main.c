@@ -30,17 +30,22 @@ SOFTWARE.
 
 int main(void)
 {
-	uint64_t *ptr = malloc(sizeof(uint64_t)*100);
+	uint64_t *ptr = malloc(sizeof(uint64_t)*10);
 	if(ptr == NULL)
 	{
 		printf("First malloc returned NULL");
 		return 1;
 	}
-	malloc(100);
+	uint64_t *ptr2 = malloc(sizeof(uint64_t)*10);
 	for(int i = 0; i < 10; i++)
 		ptr[i] = i * 10;
 	for(int i = 0; i < 10; i++)
 		printf("ptr[%d] = %lu\n", i, ptr[i]);
+	for(int i = 0; i < 10; i++)
+		ptr2[i] = i * 100;
+	for(int i = 0; i < 10; i++)
+		printf("ptr2[%d] = %lu\n", i, ptr2[i]);
+	malloc(sizeof(uint64_t)*10);
 //	ptr = myMalloc(sizeof(char));
 //	if(ptr == NULL)
 //	{

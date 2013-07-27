@@ -32,8 +32,8 @@ SOFTWARE.
 
 #define DEBUG 1 /* set this to 0 if you want to stop the debugging code */
 #define NULL ((void*)0) /* Just in case it's not included */
-/* Debug print macro that works only when the debug is defined 
-	to print something that has no arguments DEBUG_PRINT("%s\n","x");
+/* Debug print macro that works only when the debug is define. 
+	To print something that has no arguments DEBUG_PRINT("%s\n","x");
 	We can simply omit the fmt but that would mean fprintf won't be able
 	to check the format string and the parameters passed */
 static int DEBUG_COUNT;
@@ -44,10 +44,12 @@ static int DEBUG_COUNT;
 	} \
 	while(0)
 #define FREE_LISTS_COUNT 11 /* How many segragated lists we're maintaining */
-/* Sets the free bit in the header to indicate that this block is free */
-#define SET_FREE(header) ((header->blockSize)=((header->blockSize) | 0x2))
-/* Clears the free bit in the header to indicate this block is allocated */
-#define SET_ALLOC(header) ((header->blockSize)=((header->blockSize) & (~0x2)))
+/* Min block size in bytes =  footer + header + nextFree pointer */
+#define MIN_BLOCK_SIZE ((2 * sizeof(struct blockHeader)) + 8)
+/* Clears the alloc bit in the header to indicate that this block is free */
+#define SET_FREE(header) ((header->blockSize)=((header->blockSize) & (~0x2)))
+/* Sets the alloc bit in the header to indicate this block is allocated */
+#define SET_ALLOC(header) ((header->blockSize)=((header->blockSize) | 0x2))
 /* Sets up the boundry tag - it's a 64-bits of 1 that marks the start & end of
 	the heap*/
 #define SET_BOUND_TAG(header) ((header->blockSize) = (~(0)))
@@ -56,31 +58,37 @@ static int DEBUG_COUNT;
 struct blockHeader/* Used for lists[5-10] */
 {
 	uint64_t blockSize;/* the LSB is reserved, the 2nd LSB is used to test
-				if the block is allocated or free, the 3rd LSB
-				is always set to 0.
-				The rest count how many words are in the 
-				block.
-				A word is 8-bytes! */
+				if the block is allocated or free(0 for free -
+					1 for allocated), 
+				the 3rd LSB is always set to 0.
+				The rest count how many BYTES are in the 
+				block. */
 };
 
 /* static function prototypes */
 static inline int pickAppropriateList(size_t size);
-static uint64_t *extractFreeBlock(int listNum, size_t size);
-static uint64_t *searchList(int listNum, size_t size);
-static inline uint64_t *firstFitSearch(int listNum, size_t size);
-static inline uint64_t *bestFitSearch(int listNum, size_t size);
-static uint64_t *growHeap(size_t size);
+static uint8_t *extractFreeBlock(int listNum, size_t size);
+static inline uint8_t *searchList(int listNum, size_t size);
+static inline uint8_t *firstFitSearch(int listNum, size_t size);
+static inline uint8_t *bestFitSearch(int listNum, size_t size);
+static uint8_t *sliceBlock(uint8_t *dataBlock, size_t requestedSize);
+static bool canFitInList(int listNum, size_t size);
+static inline struct blockHeader *getFooter(uint8_t *block);
+static uint8_t *growHeap(size_t size);
 static inline int setInitialBoundries(void);
-static inline void addFreeBlockToList(int listNum, uint64_t *newBlock);
+static inline void addFreeBlockToList(int listNum, uint8_t *newBlock);
 
 /* static variables */
-static uint64_t *freeLists[FREE_LISTS_COUNT];
+static uint8_t *freeLists[FREE_LISTS_COUNT];
 
 /* begin myMalloc */
 void *myMalloc(size_t size)
 {
-	uint64_t *userData; /* The pointer we will return to the user */
-	uint64_t *newBlock; /* Used to point to the block added by growHeap */
+	uint8_t *userData; /* The pointer we will return to the user */
+	uint8_t *newBlock; /* Used to point to the block added by growHeap */
+	uint8_t *slicedBlock; /* Used to point to the left-over of a block */
+	struct blockHeader *header, *footer, *sliceHeader;
+	int sliceList;/* Which list the slice belongs to */
 	size += sizeof(struct blockHeader) * 2; /* The header+footer */
 	size = (size+7) & ~7;/* Align the size to 8-byte boundry */
 	/* Identify which list to pick from */
@@ -92,8 +100,29 @@ void *myMalloc(size_t size)
 	if(userData != NULL)
 	{
 		/* Slice and return the rest if you can */
-		/* Set up the block header and footer */
-		/* Return the block to the user */
+		slicedBlock = sliceBlock(userData, size);
+		if(slicedBlock != NULL)
+		{
+			sliceHeader = (struct blockHeader *) slicedBlock;
+			if(canFitInList(listNum, sliceHeader->blockSize))
+			{
+				addFreeBlockToList(listNum, slicedBlock);
+			}
+			else
+			{
+				sliceList = pickAppropriateList(sliceHeader->
+								blockSize);
+				addFreeBlockToList(sliceList, slicedBlock);
+			}
+			
+		}
+		/* Mark the block as allocated */
+		header = (struct blockHeader *) userData;
+		SET_ALLOC(header);
+		footer = getFooter(userData);
+		SET_ALLOC(footer);
+		userData = userData + 8;/* Now points past the header */
+		DEBUG_PRINT("%s\n", "-------------------------------------");
 		return userData;	
 	}
 	/* When we can't extract a free block, it means no list has enough 
@@ -102,15 +131,27 @@ void *myMalloc(size_t size)
 	if((newBlock = growHeap(size)) == NULL)
 	{
 		errno = ENOMEM;
+		DEBUG_PRINT("%s\n", "-------------------------------------");
 		return NULL;
 	}
 	addFreeBlockToList(listNum, newBlock);
-	DEBUG_PRINT("malloc: a new block of size %lu was added to list[%d]\n",
-			(*newBlock) & (~3), listNum);
-	/* We were able to grow the heap */
 	userData = extractFreeBlock(listNum, size);
-	/* Slice, set up header & footer, return the block to the user */
-	userData++;/* Points to the begining of the data */
+	slicedBlock = sliceBlock(userData, size);
+	if(slicedBlock != NULL)
+	{
+		sliceHeader = (struct blockHeader *) slicedBlock;
+			if(canFitInList(listNum, sliceHeader->blockSize))
+			{
+				addFreeBlockToList(listNum, slicedBlock);
+			}
+			else
+			{
+				sliceList = pickAppropriateList(sliceHeader->
+								blockSize);
+				addFreeBlockToList(sliceList, slicedBlock);
+			}	}
+	userData = userData + 8;/* Now points past the header */
+	DEBUG_PRINT("%s\n", "-------------------------------------");
 	return userData;
 }
 /* end myMalloc */
@@ -166,12 +207,12 @@ static inline int pickAppropriateList(size_t size)
 /* end pickAppropriateList */
 
 /* begin extractFreeBlock */
-static uint64_t *extractFreeBlock(int listNum, size_t size)
+static uint8_t *extractFreeBlock(int listNum, size_t size)
 {
 /* Searches each list(starting from listNum) for a big-enough free block, 
 	if it can't find any it returns NULL.
  */
-	void *data = NULL;
+	uint8_t *data;
 	/* Search this list, if you can't find a free-block, search the rest*/
 	for(int i = listNum; i < FREE_LISTS_COUNT; i++)
 	{
@@ -184,13 +225,12 @@ static uint64_t *extractFreeBlock(int listNum, size_t size)
 /* end extractFreeBlock */
 
 /* begin searchList */
-static uint64_t *searchList(int listNum, size_t size)
+static inline uint8_t *searchList(int listNum, size_t size)
 {
 /*  This function searches a particular list for a big-enough block.
 	Depending on which list we're searching, we go either best-fit or 
 	first fit.
 */
-	uint64_t *currentBlock = freeLists[listNum];
 	if(listNum <= 4)
 	{/* First fit */
 		assert(size <= 512);
@@ -198,15 +238,18 @@ static uint64_t *searchList(int listNum, size_t size)
 	}
 	else
 	{/* Best fit */
+		assert(listNum > 4);
 		return bestFitSearch(listNum, size);
 	}
 }
 /* end searchList */
 
 /* begin firstFitSearch */
-static inline uint64_t *firstFitSearch(int listNum, size_t size)
+static inline uint8_t *firstFitSearch(int listNum, size_t size)
 {
-	uint64_t *currentBlock = freeLists[listNum];
+	/* We'll work here with word-pointers rather than byte-pointers
+		because it makes list manipulation MUCH easier  */
+	uint64_t *currentBlock = (uint64_t *)freeLists[listNum];
 	struct blockHeader *header;
 	if(currentBlock == NULL)
 		return NULL;
@@ -215,12 +258,11 @@ static inline uint64_t *firstFitSearch(int listNum, size_t size)
 	{
 		header = (struct blockHeader *)currentBlock;
 		DEBUG_PRINT("firstFitSearch: blockSize = %lu\n", 
-					(header->blockSize & (~3)));
+					header->blockSize);
 		DEBUG_PRINT("firstFitSearch: requested size = %lu\n",
 					size);
-		/* Set first 3 bits to 0 before comparing */
-		if((header->blockSize & (~3)) >= size)
-			return currentBlock;
+		if(header->blockSize >= size)
+			return (uint8_t *)currentBlock;
 		currentBlock++;/* Now it points to the nextFree pointer */
 		currentBlock = (uint64_t *)(*currentBlock);
 	}
@@ -229,10 +271,12 @@ static inline uint64_t *firstFitSearch(int listNum, size_t size)
 /* end firstFitSearch */
 
 /* begin bestFitSearch */
-static inline uint64_t *bestFitSearch(int listNum, size_t size)
+static inline uint8_t *bestFitSearch(int listNum, size_t size)
 {
-	uint64_t *currentBlock = freeLists[listNum];
-	uint64_t *currentMin;
+	/* We'll work here with word-pointers rather than byte-pointers
+		because it makes list manipuation MUCH easier */
+	uint64_t *currentBlock = (uint64_t *)freeLists[listNum];
+	uint64_t *currentMin = NULL;
 	struct blockHeader *currentHeader, *minHeader;
 	if(currentBlock == NULL)
 		return NULL;
@@ -244,12 +288,11 @@ static inline uint64_t *bestFitSearch(int listNum, size_t size)
 	{
 		currentHeader = (struct blockHeader *)currentBlock;
 		DEBUG_PRINT("bestFitSearch: blockSize = %lu\n", 
-					(currentHeader->blockSize & (~3)));
+					currentHeader->blockSize);
 		DEBUG_PRINT("bestFitSearch: requested size = %lu\n",
 					size);
-		/* Set first 3 bits to 0 before comparing */
-		if((currentHeader->blockSize & (~3)) >= size && 
-			currentHeader->blockSize == minHeader->blockSize )
+		if(currentHeader->blockSize >= size && 
+			currentHeader->blockSize < minHeader->blockSize )
 		{
 				currentMin = currentBlock;
 				minHeader = (struct blockHeader *)currentMin;
@@ -257,21 +300,131 @@ static inline uint64_t *bestFitSearch(int listNum, size_t size)
 		currentBlock++;/* Now it points to the nextFree pointer */
 		currentBlock = (uint64_t *)(*currentBlock);
 	}
-	return currentMin;
+	/* The current min, if there was no min enough space in the list, 
+		points to the firstBlock so we gotta check if it satisfies
+		the reqeusted size */
+	if(minHeader->blockSize >= size)
+		return (uint8_t *)currentMin;
+	else 
+		return NULL;
 }
 /* end bestFitSearch */
 
+/* begin sliceBlock */
+static uint8_t *sliceBlock(uint8_t *block, size_t requestedSize)
+{
+	/* Tries to slice a block in two(and sets up appropriate header and 
+		footer) if that can be done:
+		it returns the 2nd half of the slice and modifies the first
+		one (given in the *block)
+		returns NULL on failure */
+	struct blockHeader *originalHeader, *originalFooter, *sliceHeader,
+							*sliceFooter;
+	uint8_t *slice;
+	originalHeader = (struct blockHeader *)block;
+	/* If we can't slice */
+	if(MIN_BLOCK_SIZE > originalHeader->blockSize - requestedSize)
+		return NULL;
+	DEBUG_PRINT("sliceBlock: size of block to be sliced: %lu\n",
+					originalHeader->blockSize);
+	slice = block + requestedSize;
+	sliceHeader = (struct blockHeader *)slice;
+	/* Points to the begining of the last word in the original block */
+	sliceFooter = (struct blockHeader *) 
+				(block + originalHeader->blockSize -8);
+	sliceHeader->blockSize = originalHeader->blockSize - requestedSize;
+	sliceFooter->blockSize = sliceHeader->blockSize;	
+	DEBUG_PRINT("sliceBlock: slice size: %lu\n",
+					sliceHeader->blockSize);
+	/* Change the original block size and footer */
+	originalFooter = sliceHeader - 1;
+	originalFooter->blockSize = originalHeader->blockSize - requestedSize;
+	originalHeader->blockSize = originalFooter->blockSize;
+	
+	return slice;
+}
+/* end sliceBlock */
+
+/* begin catFitInList */
+static bool canFitInList(int listNum, size_t size)
+{
+	/* A block fits in a list if its size is equal or larger than the 
+		minimum size allowed in this list  */
+	switch(listNum)
+	{
+		case 0:
+			if(size >= 24)
+				return true;
+			break;
+		case 1:
+			if(size > 32)
+				return true;
+			break;
+		case 2:
+			if(size > 64)
+				return true;
+			break;
+		case 3:
+			if(size > 128)
+				return true;
+			break;
+		case 4:
+			if(size > 256)
+				return true;
+			break;
+		case 5:
+			if(size > 512)
+				return true;
+			break;
+		case 6:
+			if(size > 1024)
+				return true;
+			break;
+		case 7:
+			if(size > 2048)
+				return true;
+			break;
+		case 8:
+			if(size > 4096)
+				return true;
+			break;
+		case 9:
+			if(size > 8192)
+				return true;
+			break;
+		case 10:
+			if(size > 16384)
+				return true;
+			break;
+
+	}	
+	return true;
+}
+/* end canFitInList */
+
+/* begin getFooter */
+static inline struct blockHeader *getFooter(uint8_t *block)
+{
+	/* Returns a pointer to the footer of a given block */
+	struct blockHeader *header, *footer;
+	header = (struct blockHeader *) block;
+	block = block + header->blockSize - 8;
+	footer = (struct blockHeader *)block;
+	return footer;
+}
+/* end getFooter */
+
 /* begin growHeap */
-static uint64_t *growHeap(size_t size)
+static uint8_t *growHeap(size_t size)
 {
 /*
 	This function grows the heap by a specific size(found in the doc.txt)
 	and returns a pointer to the begining of the new block
 */
-	uint64_t *oldBrk, *newBrk; /* Used to set up the headers etc */
+	uint8_t *oldBrk, *newBrk; /* Used to set up the headers etc */
 	struct blockHeader *header, *footer; 
 	static bool firstCall = true;
-	bool sbrkWorked = true;/* Used to check if sbrk failed or worked */
+	bool sbrkWorked = false;/* Used to check if sbrk failed or worked */
 	uint64_t blockSize;/* Used to calculate the block size */
 	int listNum = pickAppropriateList(size);
 	/* If this is the first time we grow the heap, we've got to set up
@@ -357,23 +510,20 @@ static uint64_t *growHeap(size_t size)
 	if((newBrk = sbrk(0)) == (void*)-1)
 		return NULL;
 	/* set oldBrk to point to the begining of the last boundry tag by
-		subtracting 1(one 8-byte word) from it */
-	oldBrk = oldBrk - 1;
-	/* -1 to avoid counting the new boundry tag
-		* 8 because the block size is in bytes, not words */
-	blockSize = (newBrk - oldBrk - 1) * 8;
+		subtracting 8 from it */
+	oldBrk = oldBrk - 8;
+	/* -8 to avoid counting the new boundry tag */
+	blockSize = (newBrk - oldBrk - 8);
 	DEBUG_PRINT("growHeap: blockSize = %lu\n", blockSize);
 	/* set up the header */
 	header = (struct blockHeader*) oldBrk;
 	header->blockSize = blockSize;
-	SET_FREE(header);
 	/* set up the footer */
 	footer = (struct blockHeader*) newBrk;/* errCheck = current brk */	
-	footer--;/* Now footer points to the brk boundry tag */
+	footer -= 8;/* Now footer points to the brk boundry tag */
 	SET_BOUND_TAG(footer);/* Set a new boundry tag  */
-	footer--;/* Points to the footer of the newely allocated block */	
+	footer -= 8;/* Points to the footer of the newely allocated block */	
 	footer->blockSize = blockSize;
-	SET_FREE(footer);
 	return oldBrk;
 }
 /* end growHeap */
@@ -384,7 +534,7 @@ static uint64_t *growHeap(size_t size)
 	returns 0 on success -1 on failure */
 static inline int setInitialBoundries(void)
 {
-	unsigned char *ptr; /* Used to grow the heap and set up the boundries */
+	uint8_t *ptr; /* Used to grow the heap and set up the boundries */
 	struct blockHeader *header;/* Sets values in boundry tags */ 
 	ptr = sbrk(0);
 	if(ptr == (void*) -1)
@@ -392,30 +542,35 @@ static inline int setInitialBoundries(void)
 	/* If the current brk is not aligned to 8-byte */
 	if((intptr_t)ptr % 8 != 0)
 	{
-		/* Add to it whatever needed to make it reach the next				8-byte boundry */
+		/* Add to it whatever needed to make it reach the next 
+			8-byte boundry */
 		ptr += 8 - ((intptr_t)ptr % 8);
 		if(brk(ptr) < 0)
 			return -1;
 	}
-	/* grow the heap to add the boundry tags */
-	ptr += (sizeof(struct blockHeader) * 2);
-	if(brk(ptr) < 0)
+	/* grow the heap to add the boundry tags */;
+	if((ptr = sbrk(sizeof(struct blockHeader)*2)) == (void *) -1)
 		return -1;
 	/* Retrieve and set the boundry tags */
-	header = (struct blockHeader *)(
-			ptr - (sizeof(struct blockHeader) * 2));
+	header = (struct blockHeader *) ptr;
 	header->blockSize = ~0;/* all 1s marks a boundry */
-	header++;
+	header++;/* It now points to the end boundry tag */
 	header->blockSize = ~0;/* all 1s marks a boundry */		
 	return 0;
 }
 /* end setInitialBoundries */
 
 /* begin addFreeBlockToList */
-static inline void addFreeBlockToList(int listNum, uint64_t *newBlock)
+static inline void addFreeBlockToList(int listNum, uint8_t *newBlock)
 {
 	/* Always adds to the begining of the list */
-	uint64_t *nextFree = newBlock + 1;
+
+	/* List manipulation is always done in words, not bytes
+		to avoid several complexities */
+	uint64_t *nextFree = (uint64_t *)(newBlock + 8);
+	DEBUG_PRINT("addFreeBlockToList: a new block of size %lu was added to"
+		" list[%d]\n", ((struct blockHeader*)newBlock)->blockSize,
+								listNum);
 	*nextFree = (intptr_t) freeLists[listNum];
 	freeLists[listNum] = newBlock;		
 }
