@@ -8,14 +8,15 @@ v 1.0 Requirements:
 We'll be taking care to get the following requirements very strictly:
 0-  We are targetting machines running in x86-64 and We'll use that as a rough
 	 hint to how much memory we expect the system to have. (debatable)
-1-  Our allocator package(malloc & free) can handle an arbitrary request 
+1-  Our allocator package(malloc & free) can handle any arbitrary request 
 	sequences; no assumptions about malloc being called in any order
 	to free or vice versa.
 2-  The allocator package must return immediate response to the call: 
 	no buffering, deferring, or blocking is allowed.
 3-  The allocator is only allowed to allocate user blocks on the heap;
 	furthermore, any internal data-structure the allocator package uses 
-	should be strictly on the heap.
+	should be strictly on the heap(with the exception of the array of
+		explicit free lists).
 4-  Aligning blocks: For performance reasons, alignment must be taken care of,
 	blocks returned should be aligned on an 8-byte boundary 
 	(words in the x86-64 are 8-byte wide which explains this aligment
