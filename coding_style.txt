@@ -20,8 +20,6 @@ Followed by the following, in this order:
 -static variables
 
 Followed by functions:
-	-each function starts and end with a comment and this is called
-	comment-marking
 	-if a function returns error code, they must be defined before it
 	and inside the comment-marking the function
 	-If a function uses a static function, the static function
@@ -38,7 +36,7 @@ Comments (/**/) must always leave at least one space after the /* token
 
 On names:
 Function names must be order-verbs
-All names, variables and functions, use the camelCase convention unless stated 
+All names, variables and functions, use the low_case convention unless stated 
 	otherwise.
 Hungarian notation is strictly prohibited
 Macros, other defines and constants are named with UPPER_CASE and each word is 
@@ -46,8 +44,10 @@ Macros, other defines and constants are named with UPPER_CASE and each word is
 Functions/macros meant for debugging only are always named with debug_<name>
  
 On indentation:
-Use tabs, never spaces
-If you've exceeded 4 levels of indentation, something is wrong in your code
+Use spaces and not tabs.
+Each indentation level is 4 spaces; the reason why we're using spaces intead of
+tabs is that they save width space without hurting readability and they're
+portable across all systems
 
 On curely braces:
 They NEVER appear in the same line as a statement or expression
