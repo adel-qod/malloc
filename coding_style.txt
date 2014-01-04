@@ -34,6 +34,19 @@ Comments that are meant as warning must be ALL UPPER CASE
 Comments (/**/) must always leave at least one space after the /* token
 	and at least one space before the */ token
 
+On documentation:
+We'll use an XML style documentation.
+Before each function, a doc string should appear.
+    A doc string is a /// followed by one of the following tags:
+    <summary> ... </summary>
+    <param name='name'> ... </param>
+    <c> some_code_piece_or_name </c>
+    <return> ... </return>
+The docstring before the function must have at least a summary and a return
+    and if it has parameters, must also has a tag for each parameter.
+The docstring appears before the function definition and not before the
+prototypes
+
 On names:
 Function names must be order-verbs
 All names, variables and functions, use the low_case convention unless stated 
