@@ -23,7 +23,7 @@ Followed by functions:
 	-if a function returns error code, they must be defined before it
 	and inside the comment-marking the function
 	-If a function uses a static function, the static function
-	must follow it but it must be in its own comment-marking.
+	must follow it
 
 On comments:
 Only the /**/ style is used for leaving comments 
