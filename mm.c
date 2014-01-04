@@ -96,8 +96,10 @@ static uint8_t *free_lists[FREE_LISTS_COUNT];
 /// the requirements document for more details.
 /// <summary>
 /// <param name='size'> How many bytes the user needs to allocate </param>
-/// <return> A properely aligned pointer to a block of memory whose size at
-/// is at least equal to the size requested by the caller. </return>
+/// <return> 
+/// A properely aligned pointer to a block of memory whose size at
+/// is at least equal to the size requested by the caller. 
+/// </return>
 void *my_malloc(size_t size)
 {
     uint8_t *user_data; /* The pointer we will return to the user */
