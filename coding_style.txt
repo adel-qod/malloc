@@ -50,14 +50,19 @@ tabs is that they save width space without hurting readability and they're
 portable across all systems
 
 On curely braces:
-They NEVER appear in the same line as a statement or expression
-They're ALWAYS after it
+They appear in the same line as a statement or expression
+(saves space)
 Good:
+	if() {
+    }
+Bad:
 	if()
-	{}
-bad:
-	if(){
+    {
 	}
+* The only exception to this rule are functions:
+void foo()
+{
+}
 
 On debugging:
 Printing debug messages should only be done with the debug_print macro
