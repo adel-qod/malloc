@@ -31,31 +31,18 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 #include "mm.h"
-#include "test_functions.h"
-int main(void)
+
+/* beging debug_alignment */
+void debug_alignment(void)
 {
-	uint64_t *ptr = malloc(sizeof(uint64_t)*10);
-	if(ptr == NULL)
+	char *ptr;
+	int i = 0;
+	while((ptr = malloc(1000)) != NULL)
 	{
-		printf("First malloc returned NULL");
-		return 1;
+		i++;
+		if(((intptr_t)ptr) % 8 != 0)
+			fprintf(stderr, "alignment error after %d calls\n", i);
 	}
-	uint64_t *ptr2 = malloc(sizeof(uint64_t)*10);
-	for(int i = 0; i < 10; i++)
-		ptr[i] = i * 10;
-	for(int i = 0; i < 10; i++)
-		printf("ptr[%d] = %lu\n", i, ptr[i]);
-	for(int i = 0; i < 10; i++)
-		ptr2[i] = i * 100;
-	for(int i = 0; i < 10; i++)
-		printf("ptr2[%d] = %lu\n", i, ptr2[i]);
-	malloc(sizeof(uint64_t)*10);
-	debug_alignment();
-//	ptr = myMalloc(sizeof(char));
-//	if(ptr == NULL)
-//	{
-//		printf("Second malloc returned a NULL\n");
-//		return 1;
-//	}
-	return 0;
+	printf("stopped after %d tries\n", i);
 }
+/* end debug_alignment */
