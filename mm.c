@@ -124,9 +124,10 @@ void *my_malloc(size_t size)
             return NULL;
         }
         add_free_block_to_list(list_num, new_block);
+        user_data = extract_free_block(list_num, size);
     }
-    user_data = extract_free_block(list_num, size);
     assert(user_data != NULL);
+    DEBUG_PRINT("%s\n", "Found a block!");
     /* If we can slice, add the left-over back to our lists */
     sliced_block = slice_block(user_data, size);
     if(sliced_block != NULL) {
@@ -201,8 +202,12 @@ static uint8_t *extract_free_block(int list_num, size_t size)
     /* Search this list, if you can't find a free-block, search all larger 
      * ones */
     for(int i = list_num; i < FREE_LISTS_COUNT; i++) {
-        if((data = search_list(i, size)) != NULL)
+        DEBUG_PRINT("Searching list[%d] for block of size %zd\n", i
+                                                                , size);
+        if((data = search_list(i, size)) != NULL) {
+            DEBUG_PRINT("Found block in list[%d]\n", i);
             return data;
+        }
     }
     DEBUG_PRINT("%s\n", "returning NULL");
     return NULL;
@@ -300,10 +305,8 @@ static inline uint8_t *best_fit_search(int list_num, size_t size)
     /* Find the block with min size that satisfies the request */
     while(current_block != NULL) {
         current_header = (struct block_header *)current_block;
-        DEBUG_PRINT("block_size = %lu\n", 
-                    current_header->block_size);
-        DEBUG_PRINT("requested size = %lu\n",
-                    size);
+        DEBUG_PRINT("block_size = %lu\n", current_header->block_size);
+        DEBUG_PRINT("requested size = %lu\n", size);
         if(current_header->block_size >= size && 
             current_header->block_size < min_header->block_size ) {
                 current_min = current_block;
