@@ -54,14 +54,14 @@ static int DEBUG_COUNT;
                 __VA_ARGS__);\
     } \
     while(0)
-#define FREE_LISTS_COUNT 11 /* How many segragated lists we're maintaining */
+#define FREE_LISTS_COUNT 11 /* How many segregated lists we're maintaining */
 /* Min block size in bytes =  footer + header + nextFree pointer */
 #define MIN_BLOCK_SIZE ((2 * sizeof(struct block_header)) + 8)
 /* Clears the alloc bit in the header to indicate that this block is free */
 #define SET_FREE(header) ((header->block_size)=((header->block_size) & (~0x2)))
 /* Sets the alloc bit in the header to indicate this block is allocated */
 #define SET_ALLOC(header) ((header->block_size)=((header->block_size) | 0x2))
-/* Sets up the boundry tag - it's a 64-bits of 1 that marks the start & end of
+/* Sets up the boundary tag - it's a 64-bits of 1 that marks the start & end of
     the heap*/
 #define SET_BOUND_TAG(header) ((header->block_size) = (~(0)))
 
@@ -110,7 +110,7 @@ void *my_malloc(size_t size)
     if(size <= 0)
         return NULL;
     size += sizeof(struct block_header) * 2; /* The header+footer */
-    size = (size+7) & ~7;/* Align the size to 8-byte boundry */
+    size = (size+7) & ~7;/* Align the size to 8-byte boundary */
     /* Identify which list to pick from */
     int list_num = pick_list(size);
     DEBUG_PRINT("size requested: %zd\n", size);
@@ -351,7 +351,7 @@ static uint8_t *slice_block(uint8_t *block, size_t requested_size)
                     original_hdr->block_size);
     slice = block + requested_size;
     slice_header = (struct block_header *)slice;
-    /* Points to the begining of the last word in the original block */
+    /* Points to the beginning of the last word in the original block */
     slice_ftr = (struct block_header *) 
                 (block + original_hdr->block_size -8);
     slice_header->block_size = original_hdr->block_size - requested_size;
@@ -383,7 +383,7 @@ static inline struct block_header *get_footer(uint8_t *block)
 /// (details found in the doc.txt)
 /// <param name='size'> The minimum size to grow the heap by </param>
 /// <return> 
-/// Pointer to the begining of the new block or NULL on failure
+/// Pointer to the beginning of the new block or NULL on failure
 //  </return>
 static uint8_t *grow_heap(size_t size)
 {
@@ -394,7 +394,7 @@ static uint8_t *grow_heap(size_t size)
     uint64_t block_size;/* Used to calculate the block size */
     int list_num = pick_list(size);
     /* If this is the first time we grow the heap, we've got to set up
-        boundary tag to mark the begining of the heap and its end */
+        boundary tag to mark the beginning of the heap and its end */
     if(first_call) {
         if(set_initial_boundries() < 0) {
             DEBUG_PRINT("%s\n", "Failed to set init bounds => "
@@ -471,10 +471,10 @@ static uint8_t *grow_heap(size_t size)
         DEBUG_PRINT("%s\n", "Failed to query sbrk! Returning NULL");
         return NULL;
     }
-    /* set old_brk to point to the begining of the last boundry tag by
+    /* set old_brk to point to the beginning of the last boundary tag by
         subtracting 8 from it */
     old_brk = old_brk - 8;
-    /* -8 to avoid counting the new boundry tag */
+    /* -8 to avoid counting the new boundary tag */
     block_size = (new_brk - old_brk - 8);
     DEBUG_PRINT("block_size = %lu\n", block_size);
     /* set up the header */
@@ -482,40 +482,40 @@ static uint8_t *grow_heap(size_t size)
     header->block_size = block_size;
     /* set up the footer */
     footer = (struct block_header*) new_brk;/* errCheck = current brk */  
-    footer -= 8;/* Now footer points to the brk boundry tag */
-    SET_BOUND_TAG(footer);/* Set a new boundry tag  */
+    footer -= 8;/* Now footer points to the brk boundary tag */
+    SET_BOUND_TAG(footer);/* Set a new boundary tag  */
     footer -= 8;/* Points to the footer of the newely allocated block */    
     footer->block_size = block_size;
     return old_brk;
 }
 
 /// <summary> 
-/// Sets up the heap-start boundry tag and heap-end boundry tag
+/// Sets up the heap-start boundary tag and heap-end boundary tag
 /// </summary>
 /// <return> 0 on success -1 on failure </return>
 static inline int set_initial_boundries(void)
 {
     uint8_t *ptr; /* Used to grow the heap and set up the boundries */
-    struct block_header *header;/* Sets values in boundry tags */ 
+    struct block_header *header;/* Sets values in boundary tags */ 
     ptr = sbrk(0);
     if(ptr == (void*) -1)
         return -1;
     /* If the current brk is not aligned to 8-byte */
     if((intptr_t)ptr % 8 != 0) {
         /* Add to it whatever needed to make it reach the next 
-            8-byte boundry */
+            8-byte boundary */
         ptr += 8 - ((intptr_t)ptr % 8);
         if(brk(ptr) < 0)
             return -1;
     }
-    /* grow the heap to add the boundry tags */;
+    /* grow the heap to add the boundary tags */;
     if((ptr = sbrk(sizeof(struct block_header)*2)) == (void *) -1)
         return -1;
-    /* Retrieve and set the boundry tags */
+    /* Retrieve and set the boundary tags */
     header = (struct block_header *) ptr;
-    header->block_size = ~0;/* all 1s marks a boundry */
-    header++;/* It now points to the end boundry tag */
-    header->block_size = ~0;/* all 1s marks a boundry */     
+    header->block_size = ~0;/* all 1s marks a boundary */
+    header++;/* It now points to the end boundary tag */
+    header->block_size = ~0;/* all 1s marks a boundary */     
     return 0;
 }
 

@@ -1,10 +1,10 @@
 This file explains how the allocator is designed and why it is designed this 
 	way.
 
-NOTE: You are expected to be famalier with the virtual memory concepts, the 
+NOTE: You are expected to be familiar with the virtual memory concepts, the 
 		different allocation algorithms(best/first/next fit), and
 		the different possible organizations of the heap memory
-		(implicit-free-list, explicit-free-list, segragated lists).
+		(implicit-free-list, explicit-free-list, segregated lists).
 	For a reference, these topics are covered very well in the book:
 		Computer Systems a Programmer's Perspective, 2nd ed, Chapter 9
 		Or read about them on the Internet =) 
@@ -13,7 +13,7 @@ On the organization of the free space:
 	- We will be maintaining different free-blocks lists, each one has
 		its own size-class. 
 		The reason is that by this design, we'll be avoiding as much 
-		external fragementation as possible; also this organization 
+		external fragmentation as possible; also this organization 
 		means that on average, the time malloc takes is O(M) where
 		M is the number of blocks in one of these lists.
 	- Each list in its own is organized as an explicit-free list.
@@ -36,7 +36,7 @@ The lists will have the following size-classes:
 	9: blocks of size 16384-bytes and less
 	10: blocks more than 16384-bytes
  
-On the minumum block size and the contents of each block: 
+On the minimum block size and the contents of each block: 
 (size here refers to the payload + header + footer)
 	header and footer store an 64-bit integer that counts how many bytes 
 		does the block has. Yes, some classes here don't require that 
@@ -47,7 +47,7 @@ On the minumum block size and the contents of each block:
 		v.2 by the Mark & Sweep Algorithm
 	** The 2nd LSB is used to indicate the allocation
 		status of this block (0 for free - 1 for allocated
-	*** The 3rd LSB is ALWAYS 0 (to recongize a block from boundry tags)
+	*** The 3rd LSB is ALWAYS 0 (to recognize a block from boundary tags)
 	**** In case the block is free, its payload is used
 		to store a pointer to the next free block
 
@@ -73,25 +73,25 @@ On allocation policy:
 		(for graphical explanation, check the malloc_flow_char file)
 	For classes[0-4]:  We will be using first-fit allocation here.
 		The rational is that best-fit is too slow for such lists and 
-		the internal fragemntation given by first-fit here is tolerable
+		the internal fragmentation given by first-fit here is tolerable
 		since block sizes are small and are put up in different lists
 		of close sizes to each other.
-		There's no fear of fragementation at the begining of each list
+		There's no fear of fragmentation at the beginning of each list
 		because we explicitly do not allow slicing unless it makes 
 		a left-over that's of a block-size ,for some list,
 			 in itself too.
 		Keep in mind that the list sizes are multiples of each other
-		dso a request of size 136 will slice from the list of 256
-		but the left-over won't be stuck at the begining of this list.
+		so a request of size 136 will slice from the list of 256
+		but the left-over won't be stuck at the beginning of this list.
 	For classes [5-10]: We will be using a best-fit allocation here.
 		Any other option would introduce too much external
-			fragementation.
+			fragmentation.
 		The allocation throughput is gonna go down because of this but
 			it's a trade-off that must be made to keep the blocks
-			as de-fragemented as possible.
+			as de-fragmented as possible.
 
 On querying the OS for more heap space:
-	For classes[0-4]: Add space in 64KBs chuncks, if that fails add in 32KB
+	For classes[0-4]: Add space in 64KBs chunks, if that fails add in 32KB
 		if that fails add in 16KB, if that fails add in 8KB,
 		if that fails add 4 KB, if that fails add 2 KB,
 		if that fails add 2*n KB, if that fails add n KB,
@@ -101,24 +101,24 @@ On querying the OS for more heap space:
 		if that fails add in 512KB, if that fails add in 256KB
 		if that fails add 2*n KB, if that fails add n KB,
 		if that fails - terminate the allocation.
-	For class[10]: Add in 128 * n chuncks, if that fails add in 64 * n,
+	For class[10]: Add in 128 * n chunks, if that fails add in 64 * n,
 		if that fails add in 32 * n, if that fails add in 16 * n,
 		if that fails add in 8 * n, if that fails add in 4 * n,
 		if that fails add in 2 * n, if that fails add in n, 
 		if that fails - terminate the allocation.
-	The reason we're adding chuncks in this manner is to avoid too many
+	The reason we're adding chunks in this manner is to avoid too many
 		calls to sbrk which is expensive.
 
-On boundry tags:
-	The begining of the heap and its end are marked with special tags.
+On boundary tags:
+	The beginning of the heap and its end are marked with special tags.
 	These tags are the same headers used for allocation, and they're set
 	to contain all 1s as a special marker.
 
-On freeing a block & coaliscing:
+On freeing a block & coalescing:
 	- free takes is O(1); the freed block is first checked 
-		if it can be coalisced with the block right before and right 
-		after it; once that's done and coaliscing (or not thereof) is 
-		done, the freed block is placed at the begining of the first
+		if it can be coalesced with the block right before and right 
+		after it; once that's done and coalescing (or not thereof) is 
+		done, the freed block is placed at the beginning of the first
 		list we encounter whose block size is more than or equal the
 		size of the freed-block.
 	* Keep in mind that we will never have to check more than one block
