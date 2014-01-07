@@ -14,7 +14,7 @@ Note:
 		and it must be defined as static
 
 Followed by the following, in this order:
--struct definetions
+-struct definitions
 -public variables
 -static functions prototypes
 -static variables
@@ -58,11 +58,11 @@ Functions/macros meant for debugging only are always named with debug_<name>
  
 On indentation:
 Use spaces and not tabs.
-Each indentation level is 4 spaces; the reason why we're using spaces intead of
+Each indentation level is 4 spaces; the reason why we're using spaces instead of
 tabs is that they save width space without hurting readability and they're
 portable across all systems
 
-On curely braces:
+On curly braces:
 They appear in the same line as a statement or expression
 (saves space)
 Good:
@@ -89,7 +89,7 @@ type *name;
 and not
 type* name; 
 
-I, the reader of this document, herby takes a solumn oath that I will never 
+I, the reader of this document, hereby takes a solemn oath that I will never 
 	write a line of code that exceeds the 80-chars-perline standard and 
 	Gandalf the greyCoder be my witness to this.
 
