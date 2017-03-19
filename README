@@ -1,3 +1,6 @@
+DISCONTINUED. PRJECT DOES NOT WORK & WON'T FIX IT.
+CHECK `malloc2`.
+
 The aim of this project is to first write an implementation for the malloc
 C standard library function, then on top of it, implement a conservative 
 garbage collector.
